@@ -492,7 +492,7 @@ footer{background:var(--tx);color:var(--gl);padding:38px 22px 18px;text-align:ce
 <!-- NAV -->
 <!-- شريط الخصم -->
 <style>
-.discount-bar{background:linear-gradient(90deg,#b91c1c,#DC2626,#b91c1c);background-size:200%;animation:barBg 3s linear infinite;color:#fff;text-align:center;padding:7px 16px;font-size:.85rem;font-weight:700;position:fixed;top:0;width:100%;z-index:1002;letter-spacing:.3px;overflow:hidden;white-space:nowrap;}
+.discount-bar{background:linear-gradient(90deg,#b91c1c,#DC2626,#b91c1c);background-size:200%;animation:barBg 3s linear infinite;color:#fff;text-align:center;padding:7px 16px;font-size:.85rem;font-weight:700;position:fixed;top:0;width:100%;z-index:1002;letter-spacing:.3px;overflow:hidden;white-space:nowrap;transition:opacity .3s;}
 @keyframes barBg{0%{background-position:0%}100%{background-position:200%}}
 .discount-bar .badge{background:#fff;color:#DC2626;border-radius:50px;padding:1px 10px;font-size:.88rem;font-weight:900;display:inline-block;animation:pulse 1.5s ease-in-out infinite;margin:0 4px;}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
@@ -504,14 +504,14 @@ footer{background:var(--tx);color:var(--gl);padding:38px 22px 18px;text-align:ce
 .disc-toggle-btn:hover{background:rgba(255,255,255,.4);}
 .discount-bar.off{background:linear-gradient(90deg,#4b5563,#6b7280,#4b5563);animation:none;}
 </style>
-<div class="discount-bar" id="discBar" style="position:relative;">
+<div class="discount-bar" id="discBar">
   <div id="discContent">
     <div class="marquee-inner">
       🔥 عرض لفترة محدودة — خصم <span class="badge">30%</span> على جميع الطلبات من الموقع! &nbsp;&nbsp;🎉
     </div>
   </div>
 </div>
-<nav id="nav" style="top:36px;">
+<nav id="nav">
   <div class="nlogo" onclick="scrollTo(0,0)">
     <svg viewBox="0 0 44 44"><circle cx="16" cy="14" r="11" fill="#7A7068" opacity=".85"/><circle cx="28" cy="14" r="11" fill="#C8BFB5" opacity=".85"/><circle cx="22" cy="25" r="11" fill="#A07850" opacity=".5"/></svg>
     <div><div class="nbrand">الفاروق</div><div class="nsub">للطباعة والإعلان</div></div>
@@ -1131,6 +1131,7 @@ function toggleDiscount(){
     btn.style.borderColor='rgba(255,255,255,.2)';
   }
   if(typeof calcPrice==='function')calcPrice();
+  fixNavTop();
 }
 // ═══ CONFIG ═══
 const TG_TOKEN = "8732979170:AAHLjXttxb1sN8z9mebHtbKaN8dIkLOgwdw";
@@ -1711,17 +1712,33 @@ function toggleOp(el,op){
 }
 
 // ═══ NAV ═══
+function fixNavTop(){
+  const bar=document.getElementById('discBar');
+  const nav=document.getElementById('nav');
+  if(!bar||!nav)return;
+  const barH=(bar.style.display==='none'||bar.offsetHeight===0)?0:bar.offsetHeight;
+  nav.style.top=barH+'px';
+}
+
 let lastScrollY=0;
+fixNavTop();
+window.addEventListener('resize',fixNavTop);
+
+// ═══ NAV ═══
 window.addEventListener('scroll',()=>{
   const nav=document.getElementById('nav');
-  const discBar=document.getElementById('discBar');
-  const discH=discBar&&discBar.style.display!=='none'?discBar.offsetHeight:0;
+  const bar=document.getElementById('discBar');
+  if(!nav)return;
   nav.classList.toggle('sc',scrollY>40);
-  // إخفاء الـ nav لما بيسكرول لتحت، وإظهاره لما بيسكرول لفوق
   if(scrollY>lastScrollY && scrollY>100){
+    // نزول — إخفاء الشريط والـ nav
     nav.style.transform='translateY(-120%)';
+    if(bar&&bar.style.display!=='none') bar.style.opacity='0';
   } else {
+    // صعود — إظهار الشريط والـ nav
     nav.style.transform='translateY(0)';
+    if(bar&&bar.style.display!=='none') bar.style.opacity='1';
+    fixNavTop();
   }
   lastScrollY=scrollY;
 });
