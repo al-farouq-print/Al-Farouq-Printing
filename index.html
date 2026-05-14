@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="google-site-verification" content="EGXb-FWXvTnYmVfDvatWtEfy1zCwuB4wb31YOCuC8P4" />
+<<meta name="google-site-verification" content="EGXb-FWXvTnYmVfDvatWtEfy1zCwuB4wb31YOCuC8P4" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1282,7 +1282,7 @@ function calcTrajeCost(nTraje, machine, sides) {
 }
 
 // ═══ الحساب الكامل ═══
-function fullCalc(paperType, grams, sizeW, sizeH, qty, sides, printType, selectedOps, otherOpText, autoBoxOps=false, realQty=0, isBooklet=false, isPaged=false, pagesCount=0, foldedState='closed') {
+function fullCalc(paperType, grams, sizeW, sizeH, qty, sides, printType, selectedOps, otherOpText, autoBoxOps=false, realQty=0, isBooklet=false, isPaged=false, pagesCount=0, foldedState='closed', forceQtr=false, forceHalf=false) {
   if(realQty===0) realQty=qty;
 
   if (!paperType || !grams || !sizeW || !sizeH || qty < 10) return null;
@@ -1353,19 +1353,22 @@ function fullCalc(paperType, grams, sizeW, sizeH, qty, sides, printType, selecte
   const halfM = sheetType==='jayer' ? MACHINE.halfJayer : MACHINE.halfSalim;
   const qtrM  = sheetType==='jayer' ? MACHINE.qtrJayer  : MACHINE.qtrSalim;
 
+  const isShanta = autoBoxOps && realQty > 0;
+
   // حساب على كل مكينة
   function calcOnMachine(m) {
     let pcs = pcsOnMachine(m.w, m.h, sizeW, sizeH);
-    // لو المقاس أكبر من المكينة → قطعة واحدة في السحبة (تُطبع على أجزاء)
     if (pcs < 1) pcs = 1;
+    // الشنط: نص فرخ = شنطة واحدة → pcs=1 دايماً
+    if(isShanta) pcs = 1;
     const totalDraws = Math.ceil(qty / pcs);
-    const nTraje = Math.max(1, Math.ceil(totalDraws / 1000));
-    const trajeCost = calcTrajeCost(nTraje, m, sides);
-    // فرخ الورق: نص فرخ = ÷2، ربع فرخ = ÷4
+    const nTraje = isShanta ? Math.ceil(totalDraws / 1000) || 1 : Math.max(1, Math.ceil(totalDraws / 1000));
+    const trajeCost = isShanta && totalDraws < 1000
+      ? Math.round(calcTrajeCost(1, m, sides) * (totalDraws / 1000))
+      : calcTrajeCost(nTraje, m, sides);
     const sheetsPerSheet = m.label.includes('نص') ? 2 : 4;
     const sheetsNeeded = Math.ceil(totalDraws / sheetsPerSheet);
     const paperCost = sheetsNeeded * sheetPriceUnit;
-    // زنكات: كل 30,000 سحبة = طقم زنك جديد
     const zincSets = Math.max(1, Math.ceil(totalDraws / 30000));
     const zincCost = zincSets * m.zinc;
     const totalCost = paperCost + zincCost + trajeCost;
@@ -1380,13 +1383,16 @@ function fullCalc(paperType, grams, sizeW, sizeH, qty, sides, printType, selecte
   let chosen, alt;
   let bestMachineType='qtr';
   if (!qtrCalc2 && !halfCalc2) return null;
-  if (!qtrCalc2) {
-    // ربع فرخ مش ممكن (مقاس كبير) — نص فرخ إلزامي
+  if(forceHalf){
+    // الشنط: إجباري نص فرخ عشان الحساب يطلع صح (فرخة = شنطتين)
+    chosen=halfCalc2||qtrCalc2; alt=null; bestMachineType='half';
+  } else if (!qtrCalc2) {
     chosen=halfCalc2; alt=null; bestMachineType='half';
   } else if (!halfCalc2) {
     chosen=qtrCalc2; alt=null; bestMachineType='qtr';
+  } else if(forceQtr) {
+    chosen=qtrCalc2; alt=halfCalc2; bestMachineType='qtr';
   } else {
-    // كلاهما ممكن — اختر الأرخص
     if (qtrCalc2.totalCost <= halfCalc2.totalCost) {
       chosen=qtrCalc2; alt=halfCalc2; bestMachineType='qtr';
     } else {
@@ -1540,7 +1546,12 @@ const PRODUCTS = [
    defaultFinish:['قص','تكسير']},
   {id:'shanta',ico:'🛍️',name:'شنط وأكياس ورقية',autoBoxOps:true,hasFoldedOption:true,
    paperTypes:['tab3','kousheh','doblex'],defaultGram:120,
-   sizes:[{v:'صغير (18×24×8)',w:18,h:24,box:false,bW:18,bH:24,bD:8},{v:'متوسط (24×30×10)',w:24,h:30,rec:true,box:false,bW:24,bH:30,bD:10},{v:'كبير (32×40×12)',w:32,h:40,box:false,bW:32,bH:40,bD:12},{v:'مقاس مخصص (طول×عرض×ارتفاع)',custom:true,box:true}],
+   sizes:[
+     {v:'صغير (18×24×8)',w:18,h:24,box:false,bW:18,bH:24,bD:8},
+     {v:'متوسط (24×30×10)',w:24,h:30,rec:true,box:false,bW:24,bH:30,bD:10},
+     {v:'كبير (32×40×12)',w:32,h:40,box:false,bW:32,bH:40,bD:12},
+     {v:'مقاس مخصص (طول×عرض×ارتفاع)',custom:true,box:true}
+   ],
    defaultFinish:['قص','لصق']},
   {id:'fatora',ico:'📑',name:'دفاتر فواتير',isBooklet:true,pagesPerUnit:100,minQty:10,
    paperTypes:['makrobon'],defaultGram:55,
@@ -1724,6 +1735,7 @@ function pickProd(el,prod){
   ord.product=prod.name; ord.productObj=prod; ord._prod=prod;
   ord.paperType=''; ord.grams=prod.defaultGram||150;
   ord.sizeW=0; ord.sizeH=0; ord.customSize=false; ord.isBox=false;
+  ord.sheetsPerUnit=1;
   ord.selectedOps=[...prod.defaultFinish];
 
   // ضبط الحد الأدنى للكمية حسب المنتج
@@ -1892,8 +1904,9 @@ function buildSpecs(prod){
         document.getElementById('boxDims').classList.toggle('show',!!s.box);
       } else {
         ord.customSize=false;ord.isBox=false;ord.sizeW=s.w;ord.sizeH=s.h;
-        document.getElementById('customSizeWrap').classList.remove('show');
-        document.getElementById('boxDims').classList.remove('show');
+        ord.sheetsPerUnit=s.sheetsPerUnit||1;
+        document.getElementById('customSizeWrap')?.classList.remove('show');
+        document.getElementById('boxDims')?.classList.remove('show');
         calcPrice();
       }
     };
@@ -2109,6 +2122,8 @@ function calcPrice(){
   const isPaged=!!(prod?.isPaged);
   const bookletType=ord.bookletType||'single';
   let pricingQty=qty;
+  // الشنط: pcs=1 في calcOnMachine → totalDraws=qty → sheetsNeeded=qty÷2 تلقائياً (نص فرخ)
+  if(ord.sheetsPerUnit && ord.sheetsPerUnit !== 1) pricingQty = Math.ceil(qty * ord.sheetsPerUnit);
 
   if(isBooklet){
     // الدفاتر: qty = عدد دفاتر، pricingQty = عدد أوراق للطباعة
@@ -2137,11 +2152,13 @@ function calcPrice(){
 
   const ops=ord.selectedOps.filter(o=>o!=='');
   const isBoxProd=!!(ord.productObj?.autoBoxOps);
-  const result=fullCalc(ord.paperType,ord.grams,w,h,pricingQty,ord.sides,ord.printType,ops,ord.otherOp,isBoxProd,qty,isBooklet,isPaged,ord.pagesCount||0,ord.foldedState||'closed');
+  const forceQtr=false;
+  const forceHalf=ord.productObj?.id==='shanta';
+  const result=fullCalc(ord.paperType,ord.grams,w,h,pricingQty,ord.sides,ord.printType,ops,ord.otherOp,isBoxProd,qty,isBooklet,isPaged,ord.pagesCount||0,ord.foldedState||'closed',forceQtr,forceHalf);
   if(!result){document.getElementById('aiPriceBox').style.display='none';return;}
 
   ord._costPrice=result.total;
-  ord._price=Math.round(result.total * 1.80);
+  ord._price=Math.round(result.total * 2.14);
   if(discOn && discPct > 0){
     ord._priceAfterDisc=Math.round(ord._price * (1 - discPct/100));
   } else {
@@ -2539,7 +2556,7 @@ async function sendChat(){
       method:"POST",
       headers:{
         "Content-Type":"application/json",
-        "Authorization":"Bearer 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"
+        "Authorization":"Bearer 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"
       },
       body:JSON.stringify({
         model:"llama-3.3-70b-versatile",
