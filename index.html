@@ -529,7 +529,7 @@ footer{background:var(--tx);color:var(--gl);padding:38px 22px 18px;text-align:ce
   </ul>
   <div class="nright">
     <div id="authBtn"><button class="auth-icon" onclick="openAuth()" title="تسجيل الدخول">✉️</button></div>
-    <div class="user-chip" id="userChip">
+    <div class="user-chip" id="userChip" onclick="openAccount()" style="cursor:pointer;">
       <img id="uPic" src="" alt="">
       <span class="uname" id="uName">مرحباً</span>
       <button class="btn-out" onclick="doSignOut()">خروج</button>
@@ -2360,6 +2360,31 @@ ${s.uName?'🔐 *حساب:* '+s.uName+' ('+s.uEmail+')':'👤 دخول كزائ�
 
   await tgSend(custMsg);
 
+  // حفظ الطلب في Firestore
+  if(fbReady&&db&&s.uEmail){
+    try{
+      await db.collection('orders').add({
+        invNum:s._invNum,
+        name:s.name,
+        phone:s.phone,
+        addr:s.addr,
+        product:s.product,
+        paper:`${s.customPaperName||((PAPER_INFO[s.paperType]?.label)||s.paperType)} ${s.grams}جرام`,
+        size:`${s.sizeW}×${s.sizeH}`,
+        qty:s.qty,
+        ops:opsStr,
+        price:fp,
+        deposit:s._deposit,
+        depPct:s._depPct,
+        fileURL:s.fileURL||'',
+        status:'جديد',
+        userEmail:s.uEmail,
+        userName:s.uName,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }catch(e){}
+  }
+
   // رسالة الحسابات التقنية — للأدمن فقط
   if(s._calcDetails){
     await tgSend(`📊 *الحسابات التقنية — ${s._invNum}*\n\`\`\`\n${s._calcDetails}\n\`\`\``);
@@ -3075,6 +3100,89 @@ async function jbinLoad(){
 setTimeout(jbinLoad, 2000);
 // تحديث كل 10 ثواني
 setInterval(jbinLoad, 10000);
+</script>
+<!-- ═══ صفحة حسابي ═══ -->
+<style>
+#accountOverlay{display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);overflow-y:auto;}
+#accountOverlay.open{display:flex;align-items:flex-start;justify-content:center;padding:20px 10px;}
+.acc-box{background:#FDFAF6;border-radius:22px;width:100%;max-width:520px;margin:auto;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.25);}
+.acc-head{background:linear-gradient(135deg,#3D2B1F,#6B4C3B);padding:22px;color:#F5EFE6;display:flex;align-items:center;gap:14px;position:relative;}
+.acc-avatar{width:56px;height:56px;border-radius:50%;border:2px solid rgba(255,255,255,.3);object-fit:cover;}
+.acc-info{flex:1;}
+.acc-username{font-family:'Tajawal',sans-serif;font-weight:900;font-size:1.1rem;}
+.acc-email{font-size:.75rem;opacity:.75;margin-top:2px;}
+.acc-close{position:absolute;top:14px;left:14px;background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:1rem;cursor:pointer;}
+.acc-body{padding:16px;}
+.acc-sec-title{font-family:'Tajawal',sans-serif;font-weight:800;font-size:.95rem;color:#3D2B1F;margin:14px 0 10px;padding-bottom:5px;border-bottom:2px solid #C9A84C;}
+.acc-order-card{background:#F5EFE6;border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid #EDE0CE;}
+.acc-order-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.acc-inv{font-weight:700;font-size:.8rem;color:#3D2B1F;}
+.acc-status{padding:2px 10px;border-radius:50px;font-size:.72rem;font-weight:700;}
+.acc-status.جديد{background:#FEF3C7;color:#92400E;}
+.acc-status.قيد{background:#DBEAFE;color:#1E40AF;}
+.acc-status.جاهز{background:#D1FAE5;color:#065F46;}
+.acc-order-prod{font-size:.85rem;font-weight:700;color:#3D2B1F;margin-bottom:3px;}
+.acc-order-det{font-size:.75rem;color:#7A7068;}
+.acc-order-price{font-family:'Tajawal',sans-serif;font-weight:900;color:#C9A84C;font-size:.95rem;margin-top:5px;}
+.acc-empty{text-align:center;padding:30px;color:#7A7068;font-size:.9rem;}
+.acc-signout{width:100%;padding:12px;background:#3D2B1F;color:#F5EFE6;border:none;border-radius:12px;font-size:.9rem;font-weight:700;cursor:pointer;margin-top:10px;font-family:'Cairo',sans-serif;}
+.acc-loading{text-align:center;padding:20px;color:#7A7068;}
+</style>
+
+<div id="accountOverlay">
+  <div class="acc-box">
+    <div class="acc-head">
+      <button class="acc-close" onclick="closeAccount()">✕</button>
+      <img class="acc-avatar" id="accAvatar" src="" alt="">
+      <div class="acc-info">
+        <div class="acc-username" id="accName">—</div>
+        <div class="acc-email" id="accEmail">—</div>
+      </div>
+    </div>
+    <div class="acc-body">
+      <div class="acc-sec-title">📦 طلباتي</div>
+      <div id="accOrders"><div class="acc-loading">⏳ جاري التحميل...</div></div>
+      <button class="acc-signout" onclick="doSignOut();closeAccount();">🚪 تسجيل الخروج</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openAccount(){
+  const u=auth.currentUser;
+  if(!u)return;
+  document.getElementById('accName').textContent=u.displayName||u.email.split('@')[0];
+  document.getElementById('accEmail').textContent=u.email;
+  document.getElementById('accAvatar').src=u.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName||u.email)}&background=3D2B1F&color=F5EFE6`;
+  document.getElementById('accountOverlay').classList.add('open');
+  loadUserOrders(u.email);
+}
+function closeAccount(){document.getElementById('accountOverlay').classList.remove('open');}
+
+async function loadUserOrders(email){
+  const el=document.getElementById('accOrders');
+  el.innerHTML='<div class="acc-loading">⏳ جاري التحميل...</div>';
+  try{
+    const snap=await db.collection('orders').where('userEmail','==',email).orderBy('createdAt','desc').limit(20).get();
+    if(snap.empty){el.innerHTML='<div class="acc-empty">📭 لا يوجد طلبات بعد</div>';return;}
+    el.innerHTML='';
+    snap.forEach(doc=>{
+      const d=doc.data();
+      const date=d.createdAt?.toDate?.()?.toLocaleDateString('ar-EG',{year:'numeric',month:'short',day:'numeric'})||'—';
+      el.innerHTML+=`
+      <div class="acc-order-card">
+        <div class="acc-order-top">
+          <span class="acc-inv">🧾 ${d.invNum||'—'}</span>
+          <span class="acc-status ${d.status||'جديد'}">${d.status||'جديد'}</span>
+        </div>
+        <div class="acc-order-prod">${d.product||'—'}</div>
+        <div class="acc-order-det">${d.paper||''} | ${d.size||''}سم | ${d.qty||''}نسخة</div>
+        <div class="acc-order-det">📅 ${date}</div>
+        <div class="acc-order-price">${(d.price||0).toLocaleString('ar-EG')} جنيه${d.depPct<100?' | عربون: '+(d.deposit||0).toLocaleString('ar-EG')+' ج':''}</div>
+      </div>`;
+    });
+  }catch(e){el.innerHTML='<div class="acc-empty">❌ حدث خطأ في تحميل الطلبات</div>';}
+}
 </script>
 </body>
 </html>
