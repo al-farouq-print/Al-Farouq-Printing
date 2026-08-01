@@ -1344,9 +1344,8 @@ function toggleDiscount(){
   fixNavTop();
 }
 // ═══ CONFIG ═══
-const TG_TOKEN = "8973266037:AAFiAmc87Itd58-MS6d-PciKE9_H83ZoBSg";
-const TG_CHAT  = "607544440"; // ← ضع chat_id هنا
-const TG_API   = `https://api.telegram.org/bot${TG_TOKEN}`;
+// السر الحقيقي بقى مخبى جوا Cloudflare Worker مش هنا خالص
+const WORKER_URL = "https://dark-tree-40f8.has035607.workers.dev";
 
 // ═══ FIREBASE ═══
 const FB_CFG={
@@ -2839,12 +2838,12 @@ async function checkoutCart(){
 // ═══ HELPERS ═══
 async function sendPDF(file,name){
   const fd=new FormData();
-  fd.append('chat_id',TG_CHAT);fd.append('document',file,file.name);
+  fd.append('document',file,file.name);
   fd.append('caption',`📄 ملف تصميم: ${name}\n🗂 ${file.name}`);fd.append('parse_mode','Markdown');
-  try{await fetch(`${TG_API}/sendDocument`,{method:'POST',body:fd});}catch(e){}
+  try{await fetch(`${WORKER_URL}/tg-document`,{method:'POST',body:fd});}catch(e){}
 }
 async function tgSend(text){
-  try{await fetch(`${TG_API}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:TG_CHAT,text,parse_mode:'Markdown'})});}catch(e){}
+  try{await fetch(`${WORKER_URL}/tg-message`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});}catch(e){}
 }
 function getSource(){const r=document.referrer;if(!r)return'مباشر';if(r.includes('google'))return'🔍 Google';if(r.includes('facebook'))return'📘 Facebook';if(r.includes('instagram'))return'📸 Instagram';if(r.includes('t.me'))return'✈️ Telegram';return r.split('/')[2]||r;}
 
@@ -2958,11 +2957,10 @@ async function sendChat(){
   addCm(msg,'usr');const tid=addTyping();
   if(msg.includes('مصمم')||msg.includes('تصميم')){removeTyping(tid);addDesCard();return;}
   try{
-    const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+    const res=await fetch(`${WORKER_URL}/groq`,{
       method:"POST",
       headers:{
-        "Content-Type":"application/json",
-        "Authorization":"Bearer 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"
+        "Content-Type":"application/json"
       },
       body:JSON.stringify({
         model:"llama-3.3-70b-versatile",
