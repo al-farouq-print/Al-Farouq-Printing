@@ -706,6 +706,7 @@ footer{background:var(--tx);color:var(--gl);padding:38px 22px 18px;text-align:ce
     </div>
     <a href="https://wa.me/201007833249" target="_blank" style="display:flex;align-items:center;justify-content:center;text-decoration:none;width:38px;height:38px;" title="واتساب"><svg width="38" height="38" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="24" fill="#25D366"/><path d="M34.5 13.5C32.1 11.1 28.9 9.8 25.5 9.8c-7 0-12.7 5.7-12.7 12.7 0 2.2.6 4.4 1.7 6.3L12.5 35l6.4-1.7c1.8 1 3.8 1.5 5.9 1.5 7 0 12.7-5.7 12.7-12.7-.1-3.4-1.4-6.6-3.8-8.6zM25.5 33.5c-1.9 0-3.7-.5-5.3-1.4l-.4-.2-3.8 1 1-3.7-.2-.4c-1-1.6-1.5-3.5-1.5-5.4 0-5.7 4.6-10.3 10.3-10.3 2.7 0 5.3 1.1 7.3 3 2 2 3 4.5 3 7.3-.1 5.6-4.7 10.1-10.4 10.1zm5.6-7.7c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6 0-.3-.2-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.7-1.7-.9-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1 2.8 1.2 3c.2.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.8-.7 2-1.4.2-.7.2-1.4.1-1.5z" fill="white"/></svg></a>
     <button class="cart-btn" onclick="openCart()">🛒<span class="cart-badge" id="cartBadge">0</span></button>
+    <button class="tut-navbtn" id="tutNavBtn" onclick="Tut.open()" title="جولة تعليمية">🎓 <span class="tut-navbtn-txt">علّمني</span></button>
     <button class="ham" onclick="toggleMnav()">☰</button>
   </div>
 </nav>
@@ -714,7 +715,10 @@ footer{background:var(--tx);color:var(--gl);padding:38px 22px 18px;text-align:ce
   <a href="#order" onclick="closeMnav()">📦 اطلب الآن</a>
   <a href="#payment" onclick="closeMnav()">💳 الدفع</a>
   <a href="#contact" onclick="closeMnav()">📞 تواصل</a>
-  <div style="padding:9px 12px"><button class="auth-icon" onclick="openAuth();closeMnav()" style="width:auto;padding:7px 14px;border-radius:50px;background:var(--cd)">✉️ تسجيل الدخول</button></div>
+  <div style="padding:9px 12px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="auth-icon" onclick="openAuth();closeMnav()" style="width:auto;padding:7px 14px;border-radius:50px;background:var(--cd)">✉️ تسجيل الدخول</button>
+    <button class="auth-icon" onclick="closeMnav();Tut.open()" style="width:auto;padding:7px 14px;border-radius:50px;background:var(--gd);color:var(--bd);font-weight:800">🎓 علّمني</button>
+  </div>
 </div>
 
 <!-- ORDER -->
@@ -2485,7 +2489,10 @@ function calcPrice(){
   if(!result){document.getElementById('aiPriceBox').style.display='none';return;}
 
   ord._costPrice=result.total;
-  ord._price=Math.round(result.total * 2.14);
+  // خصم 50% دائم على الكروت الشخصية والبروشورات والفلايرات
+  const halfPriceIds=['kart','flyer','broshor'];
+  const priceMultiplier=halfPriceIds.includes(ord.productObj?.id) ? 2.14*0.5 : 2.14;
+  ord._price=Math.round(result.total * priceMultiplier);
   if(discOn && discPct > 0){
     ord._priceAfterDisc=Math.round(ord._price * (1 - discPct/100));
   } else {
@@ -3539,6 +3546,380 @@ async function loadUserOrders(email){
     });
   }catch(e){el.innerHTML='<div class="acc-empty">❌ حدث خطأ في تحميل الطلبات</div>';}
 }
+</script>
+
+<!-- ══════════════════════════════════════════════════════════
+     🎓 نظام "علّمني" التعليمي التفاعلي (Guided Tour)
+     يعمل فوق الموقع بدون التأثير على أي كود موجود
+════════════════════════════════════════════════════════════ -->
+<style>
+.tut-navbtn{display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,var(--gd),#E0C674);color:var(--bd);border:none;padding:0 14px;height:38px;border-radius:50px;font-weight:800;font-size:.82rem;cursor:pointer;transition:all .3s;box-shadow:0 2px 10px rgba(201,168,76,.4);flex-shrink:0;}
+.tut-navbtn:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(201,168,76,.55);}
+.tut-navbtn:active{transform:translateY(0);}
+@media(max-width:900px){.tut-navbtn-txt{display:none}.tut-navbtn{width:38px;padding:0;justify-content:center}}
+
+#tutRoot{position:fixed;inset:0;z-index:99990;display:none;font-family:'Cairo','Segoe UI',Tahoma,Arial,sans-serif;pointer-events:none;}
+#tutRoot.on{display:block;}
+/* الحاوية نفسها شفافة للكليك؛ بس الأجزاء دي هي اللي فعلاً بتمنع الكليك */
+.tut-mask,.tut-panel{pointer-events:auto;}
+
+/* الأربع ألواح التظليل حول العنصر المضيء */
+.tut-mask{position:fixed;background:rgba(15,10,7,.72);z-index:99991;transition:top .45s cubic-bezier(.4,0,.2,1),left .45s cubic-bezier(.4,0,.2,1),width .45s cubic-bezier(.4,0,.2,1),height .45s cubic-bezier(.4,0,.2,1),opacity .3s;pointer-events:auto;}
+#tutRoot.tut-nospot .tut-mask{opacity:1;}
+
+/* إطار التوهج حول العنصر الحالي */
+#tutSpot{position:fixed;z-index:99992;border-radius:14px;pointer-events:none;transition:top .45s cubic-bezier(.4,0,.2,1),left .45s cubic-bezier(.4,0,.2,1),width .45s cubic-bezier(.4,0,.2,1),height .45s cubic-bezier(.4,0,.2,1),opacity .3s;box-shadow:0 0 0 4px var(--gd),0 0 0 8px rgba(201,168,76,.35),0 0 30px 8px rgba(201,168,76,.55);opacity:0;}
+#tutSpot.on{opacity:1;}
+#tutSpot.pulse{animation:tutPulse 1.6s ease-in-out infinite;}
+@keyframes tutPulse{0%,100%{box-shadow:0 0 0 4px var(--gd),0 0 0 8px rgba(201,168,76,.35),0 0 30px 8px rgba(201,168,76,.55);}50%{box-shadow:0 0 0 4px var(--gd),0 0 0 12px rgba(201,168,76,.18),0 0 42px 14px rgba(201,168,76,.35);}}
+
+/* لوحة الشرح */
+.tut-panel{position:fixed;z-index:99995;width:320px;max-width:92vw;background:var(--wh);border-radius:18px;padding:20px 20px 16px;box-shadow:0 18px 45px rgba(0,0,0,.35);border:1.5px solid var(--cd);opacity:0;transform:translateY(14px) scale(.96);transition:opacity .35s cubic-bezier(.4,0,.2,1),transform .35s cubic-bezier(.34,1.56,.64,1),top .45s cubic-bezier(.4,0,.2,1),left .45s cubic-bezier(.4,0,.2,1),right .45s cubic-bezier(.4,0,.2,1);pointer-events:auto;}
+.tut-panel.on{opacity:1;transform:translateY(0) scale(1);}
+.tut-ptop{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.tut-pbadge{background:var(--cd);color:var(--bm);font-size:.68rem;font-weight:800;padding:3px 10px;border-radius:50px;}
+.tut-pclose{background:none;border:none;font-size:1.1rem;color:var(--gw);cursor:pointer;line-height:1;padding:2px 4px;}
+.tut-ptitle{font-family:'Tajawal',sans-serif;font-weight:900;font-size:1.02rem;color:var(--bd);margin-bottom:8px;line-height:1.4;}
+.tut-ptext{font-size:.85rem;color:var(--gw);line-height:1.8;margin-bottom:16px;white-space:pre-line;}
+.tut-pwait{display:flex;align-items:center;gap:7px;font-size:.76rem;color:var(--bm);font-weight:700;background:rgba(201,168,76,.13);border-radius:9px;padding:7px 10px;margin-bottom:12px;}
+.tut-pwait .dot{width:7px;height:7px;border-radius:50%;background:var(--gd);animation:tutBlink 1s infinite;}
+@keyframes tutBlink{0%,100%{opacity:1}50%{opacity:.3}}
+.tut-pbtns{display:flex;gap:8px;align-items:center;}
+.tut-pbtns .tbn{flex:1;padding:9px 12px;border-radius:50px;font-weight:800;font-size:.8rem;border:none;cursor:pointer;transition:all .25s;text-align:center;}
+.tut-next{background:var(--bd);color:var(--c);}
+.tut-next:hover{background:var(--bm);}
+.tut-next:disabled{opacity:.35;cursor:not-allowed;}
+.tut-prev{background:var(--cd);color:var(--bd);flex:0 0 auto!important;padding:9px 14px!important;}
+.tut-skip{background:none!important;color:var(--gw)!important;text-decoration:underline;flex:0 0 auto!important;font-weight:600!important;}
+
+/* المودال الافتتاحي/الختامي */
+.tut-modal-wrap{position:fixed;inset:0;z-index:99996;display:flex;align-items:center;justify-content:center;background:rgba(15,10,7,.72);padding:20px;opacity:0;pointer-events:none;transition:opacity .3s;}
+.tut-modal-wrap.on{opacity:1;pointer-events:auto;}
+.tut-modal{background:var(--wh);border-radius:22px;padding:34px 26px;max-width:380px;width:100%;text-align:center;transform:scale(.92);transition:transform .35s cubic-bezier(.34,1.56,.64,1);box-shadow:0 25px 60px rgba(0,0,0,.4);}
+.tut-modal-wrap.on .tut-modal{transform:scale(1);}
+.tut-modal-ico{font-size:2.6rem;margin-bottom:10px;}
+.tut-modal h3{font-family:'Tajawal',sans-serif;font-weight:900;font-size:1.15rem;color:var(--bd);margin-bottom:12px;line-height:1.5;}
+.tut-modal p{font-size:.88rem;color:var(--gw);line-height:1.9;margin-bottom:22px;white-space:pre-line;}
+.tut-modal button{width:100%;padding:13px;border-radius:50px;background:var(--gd);color:var(--bd);font-weight:900;font-size:.92rem;border:none;cursor:pointer;transition:all .3s;}
+.tut-modal button:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(201,168,76,.5);}
+.tut-modal .tut-modal-alt{background:none;color:var(--gw);font-weight:600;margin-top:10px;text-decoration:underline;font-size:.8rem;}
+
+@media(max-width:760px){
+  .tut-panel{left:12px!important;right:12px!important;width:auto!important;bottom:14px!important;top:auto!important;border-radius:20px;}
+}
+</style>
+
+<div id="tutRoot">
+  <div class="tut-mask" id="tutMaskT"></div>
+  <div class="tut-mask" id="tutMaskB"></div>
+  <div class="tut-mask" id="tutMaskL"></div>
+  <div class="tut-mask" id="tutMaskR"></div>
+  <div id="tutSpot"></div>
+  <div class="tut-panel" id="tutPanel">
+    <div class="tut-ptop">
+      <span class="tut-pbadge" id="tutStepBadge">خطوة 1</span>
+      <button class="tut-pclose" onclick="Tut.skip()" title="إغلاق">✕</button>
+    </div>
+    <div class="tut-ptitle" id="tutTitle"></div>
+    <div class="tut-ptext" id="tutText"></div>
+    <div class="tut-pwait" id="tutWaitTag"><span class="dot"></span><span>استنى تختار عشان نكمل...</span></div>
+    <div class="tut-pbtns">
+      <button class="tbn tut-prev" id="tutPrevBtn" onclick="Tut.prev()">→ السابق</button>
+      <button class="tbn tut-next" id="tutNextBtn" onclick="Tut.next()">التالي ←</button>
+    </div>
+    <div class="tut-pbtns" style="margin-top:6px">
+      <button class="tbn tut-skip" onclick="Tut.skip()">تخطي التعليم</button>
+    </div>
+  </div>
+</div>
+
+<div class="tut-modal-wrap" id="tutWelcomeWrap">
+  <div class="tut-modal">
+    <div class="tut-modal-ico">👋</div>
+    <h3>أهلاً بيك في مطبعة الفاروق</h3>
+    <p>هنمشي معاك خطوة بخطوة ونعلمك إزاي تعمل طلبك بسهولة.
+جاهز؟ خلينا نبدأ 🚀</p>
+    <button onclick="Tut.begin()">ابدأ الجولة</button>
+    <button class="tut-modal-alt" onclick="Tut.closeWelcome()">لأ، شكراً</button>
+  </div>
+</div>
+
+<div class="tut-modal-wrap" id="tutFinishWrap">
+  <div class="tut-modal">
+    <div class="tut-modal-ico">🎉</div>
+    <h3>ممتاز!</h3>
+    <p>كده عرفت تعمل طلبك خطوة بخطوة.
+ولو احتجت مساعدة في أي وقت، اضغط على 🎓 علّمني من أعلى الموقع.</p>
+    <button onclick="Tut.closeFinish()">ابدأ طلبك الآن 🚀</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+// ═══ تعريف خطوات الجولة ═══
+// كل خطوة: sel (سيلكتور أو مصفوفة سيلكتورز لعمل مستطيل موحّد حولهم)
+// pane: رقم الخطوة في نظام الطلب (1-4) أو 'invoice' — تُستخدم لمعرفة متى تظهر
+// requireVisible: سيلكتور يجب أن يكون ظاهرًا حتى تُعرض الخطوة (غير كده تتخطى تلقائيًا)
+// waitSel/waitClass: تنتظر عنصر مطابق للسيلكتور يحمل class معينة (اختيار فعلي من العميل)
+// waitPane: تنتظر تفعيل خطوة الطلب رقم كذا (لمعرفة إن العميل ضغط "التالي" الأصلي)
+// waitOverlay: تنتظر ظهور أوفرلاي معين (مثل الفاتورة)
+// manualNextOk: زر "التالي" يفضل شغال حتى لو محصلش اختيار بعد
+const TUT_STEPS=[
+ {pane:1,sel:'#orderPg',title:'🖨️ أول خطوة: اختار اللي عايز تطبعه',
+  text:'من هنا تقدر تختار المنتج أو الخدمة اللي محتاجها.\nاضغط على المنتج اللي عايزه عشان نكمل معاك 👇',
+  waitSel:'#orderPg .po',waitClass:'on'},
+
+ {pane:2,sel:'#paperChips',title:'📄 اختار الخامة',
+  text:'اختار نوع الخامة المناسب لاحتياجك.',
+  requireVisible:'#paperChips',waitSel:'#paperChips .chip',waitClass:'on'},
+
+ {pane:2,sel:'#weightField',title:'⚖️ اختار وزن الورق',
+  text:'حدد وزن الورق المناسب — كل ما الوزن أعلى كل ما الورق أسمك وأفخم.',
+  requireVisible:'#weightField',waitSel:'#weightChips .chip',waitClass:'on'},
+
+ {pane:2,sel:'#sizeField',title:'📏 اختار المقاس',
+  text:'حدد المقاس المناسب لطلبك.',
+  requireVisible:'#sizeField',waitSel:'#sizeChips .chip',waitClass:'on'},
+
+ {pane:2,sel:'#qtyInp',title:'📦 اختار الكمية',
+  text:'حدد عدد القطع اللي محتاجها، وبعدها هنكمل للخطوة التالية.',
+  manualNextOk:true},
+
+ {pane:2,sel:'#p2 .stb .btn-dark',title:'✅ تمام كده!',
+  text:'لما تخلص كل مواصفات الطباعة، دوس "التالي" عشان نكمل لبيانات التواصل والتصميم.',
+  waitPane:3},
+
+ {pane:3,sel:'#uz',title:'🎨 ارفع تصميمك',
+  text:'لو عندك تصميم جاهز، ارفعه من هنا.\nولو محتاج تصميم، تواصل مع المصمم من الأرقام الظاهرة تحت.',
+  manualNextOk:true},
+
+ {pane:3,sel:['#p3 .g2','#fAddr'],title:'👤 بيانات التواصل',
+  text:'اكتب بياناتك عشان نقدر نتواصل معاك ونأكد تفاصيل طلبك.',
+  manualNextOk:true},
+
+ {pane:3,sel:'#p3 .stb .btn-dark',title:'✅ خطوة كده وخلصنا',
+  text:'بعد ما تكتب بياناتك، دوس "التالي" عشان نروح لمراجعة الطلب.',
+  waitPane:4},
+
+ {pane:4,sel:'#smb',title:'🛒 راجع طلبك',
+  text:'هنا هتلاقي كل تفاصيل الطلب اللي اخترتها.\nراجع الكمية والمواصفات قبل ما تكمل.',
+  manualNextOk:true},
+
+ {pane:4,sel:'#p4 .stb .btn-gold',title:'🧾 راجع الفاتورة',
+  text:'لو كل حاجة تمام، دوس هنا عشان تشوف ملخص الطلب والمبلغ المطلوب.',
+  waitOverlay:'#invOverlay'},
+
+ {pane:'invoice',sel:'.inv-mfoot .btn-grn',title:'🚀 آخر خطوة',
+  text:'لو كل البيانات صحيحة، اضغط هنا لتأكيد وإرسال طلبك.',
+  finish:true,manualNextOk:true}
+];
+
+let curIdx=-1, activeStep=null, satisfied=false, watchTimer=null, active=false;
+
+function $(s,ctx){return (ctx||document).querySelector(s);}
+function isVisible(el){
+  if(!el)return false;
+  const r=el.getBoundingClientRect();
+  return !!(el.offsetParent!==null && r.width>0 && r.height>0);
+}
+
+function unionRect(selOrArr){
+  const sels=Array.isArray(selOrArr)?selOrArr:[selOrArr];
+  let rect=null;
+  sels.forEach(s=>{
+    const el=$(s);
+    if(!el||!isVisible(el))return;
+    const r=el.getBoundingClientRect();
+    if(!rect){rect={top:r.top,left:r.left,right:r.right,bottom:r.bottom};}
+    else{
+      rect.top=Math.min(rect.top,r.top);
+      rect.left=Math.min(rect.left,r.left);
+      rect.right=Math.max(rect.right,r.right);
+      rect.bottom=Math.max(rect.bottom,r.bottom);
+    }
+  });
+  if(!rect)return null;
+  return {top:rect.top,left:rect.left,width:rect.right-rect.left,height:rect.bottom-rect.top};
+}
+
+function firstEl(selOrArr){
+  const sels=Array.isArray(selOrArr)?selOrArr:[selOrArr];
+  for(const s of sels){const e=$(s); if(e) return e;}
+  return null;
+}
+
+// ═══ التحكم في الإضاءة (Overlay أسود + توهج حول العنصر) ═══
+function positionSpotlight(rect){
+  const pad=8;
+  const t=Math.max(rect.top-pad,0), l=Math.max(rect.left-pad,0),
+        w=rect.width+pad*2, h=rect.height+pad*2;
+  const vw=window.innerWidth, vh=window.innerHeight;
+
+  document.getElementById('tutMaskT').style.cssText=`top:0;left:0;width:100%;height:${t}px;`;
+  document.getElementById('tutMaskB').style.cssText=`top:${t+h}px;left:0;width:100%;height:${Math.max(vh-(t+h),0)}px;`;
+  document.getElementById('tutMaskL').style.cssText=`top:${t}px;left:0;width:${l}px;height:${h}px;`;
+  document.getElementById('tutMaskR').style.cssText=`top:${t}px;left:${l+w}px;width:${Math.max(vw-(l+w),0)}px;height:${h}px;`;
+
+  const spot=document.getElementById('tutSpot');
+  spot.style.top=t+'px'; spot.style.left=l+'px';
+  spot.style.width=w+'px'; spot.style.height=h+'px';
+  spot.classList.add('on');
+}
+
+function positionPanel(rect){
+  const panel=document.getElementById('tutPanel');
+  const vw=window.innerWidth, vh=window.innerHeight;
+  if(vw<=760){ panel.style.top=''; panel.style.left=''; panel.style.right=''; return; }
+  const pw=320, gap=22, panelH=Math.min(340,vh-40);
+  let top=rect.top+rect.height/2-panelH/2;
+  top=Math.max(20,Math.min(top,vh-panelH-20));
+  // افتراضيًا يمين الشاشة — إلا لو العنصر نفسه قريب من يمين الشاشة فهيغطيه، فننقله لليسار
+  const targetNearRight=(rect.left+rect.width) > (vw-pw-gap-20);
+  panel.style.top=top+'px';
+  if(targetNearRight){ panel.style.left='20px'; panel.style.right=''; }
+  else{ panel.style.right='20px'; panel.style.left=''; }
+}
+
+function clearWatch(){ if(watchTimer){clearInterval(watchTimer); watchTimer=null;} }
+
+function checkSatisfied(step){
+  if(step.waitSel){
+    return !!document.querySelector(step.waitSel+'.'+step.waitClass);
+  }
+  if(step.waitPane){
+    const p=document.getElementById('p'+step.waitPane);
+    return !!(p && p.classList.contains('on'));
+  }
+  if(step.waitOverlay){
+    const o=$(step.waitOverlay);
+    return !!(o && o.classList.contains('open'));
+  }
+  return true;
+}
+
+function updateButtons(step){
+  const nextBtn=document.getElementById('tutNextBtn'), waitTag=document.getElementById('tutWaitTag');
+  const ok = satisfied || step.manualNextOk;
+  nextBtn.disabled = !ok;
+  nextBtn.textContent = (curIdx===TUT_STEPS.length-1) ? 'إنهاء 🎉' : (satisfied?'التالي ←':(step.manualNextOk?'التالي ←':'التالي ←'));
+  waitTag.style.display = (!satisfied && !step.manualNextOk) ? 'flex' : 'none';
+  document.getElementById('tutPrevBtn').style.display = curIdx>0 ? 'inline-flex':'none';
+  document.getElementById('tutStepBadge').textContent = 'خطوة '+(curIdx+1)+' من '+TUT_STEPS.length;
+}
+
+function renderStep(){
+  clearWatch();
+  const step=TUT_STEPS[curIdx];
+  if(!step){ Tut.finish(); return; }
+
+  // تخطي الخطوات اللي عنصرها مش ظاهر حاليًا (حسب اختيارات العميل الفعلية)
+  if(step.requireVisible && !isVisible($(step.requireVisible))){
+    curIdx++; renderStep(); return;
+  }
+  const el=firstEl(step.sel);
+  if(!el){ curIdx++; renderStep(); return; }
+
+  activeStep=step;
+  satisfied=checkSatisfied(step);
+
+  // مرر العنصر لمنتصف الشاشة أولاً
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+
+  setTimeout(()=>{
+    const rect=unionRect(step.sel) || el.getBoundingClientRect();
+    positionSpotlight(rect);
+    positionPanel(rect);
+
+    document.getElementById('tutTitle').textContent=step.title;
+    document.getElementById('tutText').textContent=step.text;
+    document.getElementById('tutPanel').classList.add('on');
+    document.getElementById('tutSpot').classList.toggle('pulse', !satisfied && !step.manualNextOk);
+    updateButtons(step);
+
+    // راقب اختيار العميل الفعلي عشان ننتقل تلقائيًا
+    watchTimer=setInterval(()=>{
+      const nowOk=checkSatisfied(step);
+      // أعد حساب موضع العنصر باستمرار (لو تحرك بسبب تغييرات في الصفحة)
+      const r=unionRect(step.sel);
+      if(r){ positionSpotlight(r); positionPanel(r); }
+      if(nowOk && !satisfied){
+        satisfied=true;
+        document.getElementById('tutSpot').classList.remove('pulse');
+        updateButtons(step);
+        clearWatch();
+        setTimeout(()=>{ if(active && curIdx===TUT_STEPS.indexOf(step)) Tut.next(); },550);
+      }
+    },250);
+  },350);
+}
+
+window.Tut={
+  open(){
+    document.getElementById('tutWelcomeWrap').classList.add('on');
+  },
+  closeWelcome(){
+    document.getElementById('tutWelcomeWrap').classList.remove('on');
+  },
+  begin(){
+    document.getElementById('tutWelcomeWrap').classList.remove('on');
+    active=true;
+    document.getElementById('tutRoot').classList.add('on');
+    // ابدأ من الخطوة المناسبة لحالة الطلب الحالية (لو العميل عنده اختيار قبل كده)
+    curIdx=0;
+    renderStep();
+  },
+  next(){
+    curIdx++;
+    if(curIdx>=TUT_STEPS.length){ Tut.finish(); return; }
+    document.getElementById('tutPanel').classList.remove('on');
+    renderStep();
+  },
+  prev(){
+    if(curIdx<=0)return;
+    curIdx--;
+    document.getElementById('tutPanel').classList.remove('on');
+    renderStep();
+  },
+  skip(){
+    clearWatch(); active=false;
+    document.getElementById('tutRoot').classList.remove('on');
+    document.getElementById('tutSpot').classList.remove('on','pulse');
+    document.getElementById('tutPanel').classList.remove('on');
+  },
+  finish(){
+    clearWatch(); active=false;
+    document.getElementById('tutRoot').classList.remove('on');
+    document.getElementById('tutSpot').classList.remove('on','pulse');
+    document.getElementById('tutPanel').classList.remove('on');
+    document.getElementById('tutFinishWrap').classList.add('on');
+  },
+  closeFinish(){
+    document.getElementById('tutFinishWrap').classList.remove('on');
+  }
+};
+
+// زر تأكيد الفاتورة له onclick أصلي (confirmAndSend) — نضيف مستمع إضافي بدون التأثير عليه
+document.addEventListener('click',function(e){
+  if(!active)return;
+  const step=TUT_STEPS[curIdx];
+  if(step && step.finish){
+    const btn=e.target.closest('.inv-mfoot .btn-grn');
+    if(btn){ setTimeout(()=>Tut.finish(),400); }
+  }
+},true);
+
+// إعادة ضبط الموضع عند تغيير حجم الشاشة أثناء الجولة
+window.addEventListener('resize',()=>{
+  if(!active || curIdx<0)return;
+  const step=TUT_STEPS[curIdx];
+  if(!step)return;
+  const r=unionRect(step.sel);
+  if(r){ positionSpotlight(r); positionPanel(r); }
+});
+
+})();
 </script>
 </body>
 </html>
